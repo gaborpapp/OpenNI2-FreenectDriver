@@ -60,7 +60,7 @@ namespace FreenectDriver {
     // from StreamBase
     OniBool isImageRegistrationModeSupported(OniImageRegistrationMode mode) { return (mode == ONI_IMAGE_REGISTRATION_OFF || mode == ONI_IMAGE_REGISTRATION_DEPTH_TO_COLOR); }
     
-    OniStatus getProperty(int propertyId, void* data, int* pDataSize){
+    OniStatus getProperty(int propertyId, void* data, int* pDataSize) {
       switch (propertyId) {
         default:
           return VideoStream::getProperty(propertyId, data, pDataSize);
@@ -162,20 +162,6 @@ namespace FreenectDriver {
           *pDataSize = sizeof(D2S);
           //std::copy(D2S, D2S+1, static_cast<unsigned short*>(data));
           memcpy(data, D2S, *pDataSize);
-          return ONI_STATUS_OK;
-      }
-    }
-    OniStatus setProperty(int propertyId, const void* data, int dataSize) {
-      switch (propertyId) {
-        default:
-          return VideoStream::setProperty(propertyId, data, dataSize);
-
-        case ONI_STREAM_PROPERTY_MIRRORING:   // OniBool
-          if (dataSize != sizeof(OniBool)) {
-            printf("Unexpected size: %d != %lu\n", dataSize, sizeof(OniBool));
-            return ONI_STATUS_ERROR;
-          }
-          mirroring = *(static_cast<const OniBool*>(data));
           return ONI_STATUS_OK;
       }
     }

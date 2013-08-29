@@ -14,7 +14,7 @@ DepthStream::DepthStream(Freenect::FreenectDevice* pDevice) : VideoStream(pDevic
 // setVideoFormat() will try FREENECT_DEPTH_REGISTERED first then fall back on what is set here.
 DepthStream::FreenectDepthModeMap DepthStream::getSupportedVideoModes() {
 	FreenectDepthModeMap modes;
-	//											pixelFormat, resolutionX, resolutionY, fps		freenect_video_format, freenect_resolution						
+	//											pixelFormat, resolutionX, resolutionY, fps			
 	modes[makeOniVideoMode(ONI_PIXEL_FORMAT_DEPTH_1_MM, 640, 480, 30)] = std::pair<freenect_depth_format, freenect_resolution>(FREENECT_DEPTH_MM, FREENECT_RESOLUTION_MEDIUM);
 	
 	
@@ -48,11 +48,52 @@ OniStatus DepthStream::setVideoMode(OniVideoMode requested_mode) {
 
 void DepthStream::populateFrame(void* data, OniFrame* frame) const {	
 	frame->sensorType = sensor_type;
-	frame->stride = video_mode.resolutionX*sizeof(uint16_t);
-	frame->cropOriginX = frame->cropOriginY = 0;
-	frame->croppingEnabled = FALSE;	
+	frame->stride = video_mode.resolutionX * sizeof(uint16_t);
+	
+	if (cropping.enabled) {
+		frame->height = cropping.height;
+		frame->width = cropping.width;
+		frame->cropOriginX = cropping.originX;
+		frame->cropOriginY = cropping.originY;
+		frame->croppingEnabled = true;
+	}
+	else {
+		frame->cropOriginX = frame->cropOriginY = 0;
+		frame->croppingEnabled = false;	
+	}
+	
 	
 	// copy stream buffer from freenect
+	
+	unsigned short* source = static_cast<unsigned short*>(data) + frame->cropOriginX + frame->cropOriginY * video_mode.resolutionX;
+	unsigned short* target = static_cast<unsigned short*>(frame->data);
+	const unsigned int skipWidth = video_mode.resolutionX - frame->width;
+	
+	if (mirroring) {
+		target += frame->width;
+		
+		for (unsigned int y = 0; y < frame->height; y++) {
+			for (unsigned int x = 0; x < frame->width; x++) {
+				unsigned short value = *(source++);
+				*(target--) = value < DepthStream::MAX_VALUE ? value : 0;
+			}
+			
+			source += skipWidth;
+			target += 2 * frame->width;
+		}
+	}
+	else {
+		for (unsigned int y = 0; y < frame->height; y++) {
+			for (unsigned int x = 0; x < frame->width; x++) {
+				unsigned short value = *(source++);
+				*(target++) = value < DepthStream::MAX_VALUE ? value : 0;
+			}
+			
+			source += skipWidth;
+		}
+	}
+	
+	/*
 	uint16_t* data_ptr = static_cast<uint16_t*>(data);
 	uint16_t* frame_data = static_cast<uint16_t*>(frame->data);
 	if (mirroring)
@@ -69,6 +110,7 @@ void DepthStream::populateFrame(void* data, OniFrame* frame) const {
 	}
 	else
 		std::copy(data_ptr, data_ptr+frame->dataSize / 2, frame_data);
+	*/
 }
 
 

@@ -4,6 +4,7 @@
 #include "Driver/OniDriverAPI.h"
 #include "PS1080.h"
 
+#include <iostream>
 
 #define SIZE(array) sizeof array / sizeof 0[array]
 
@@ -21,6 +22,7 @@ struct FreenectStreamFrameCookie {
     refCount(1) { }
 };
 
+// "extension constructor" for OniVideoMode struct
 static OniVideoMode makeOniVideoMode(OniPixelFormat pixel_format, int resolution_x, int resolution_y, int frames_per_second) {
   OniVideoMode mode;
   mode.pixelFormat = pixel_format;
@@ -49,6 +51,7 @@ namespace FreenectDriver {
     Freenect::FreenectDevice* device;
     bool running; // acquireFrame() does something iff true
     OniVideoMode video_mode;
+    OniCropping cropping;
     bool mirroring;
   
   public:
@@ -88,7 +91,6 @@ namespace FreenectDriver {
     virtual OniStatus getProperty(int propertyId, void* data, int* pDataSize) {
       switch (propertyId) {
         default:
-        case ONI_STREAM_PROPERTY_CROPPING:            // OniCropping*
         case ONI_STREAM_PROPERTY_HORIZONTAL_FOV:      // float: radians
         case ONI_STREAM_PROPERTY_VERTICAL_FOV:        // float: radians
         case ONI_STREAM_PROPERTY_MAX_VALUE:           // int
@@ -110,6 +112,16 @@ namespace FreenectDriver {
           }       
           *(static_cast<OniVideoMode*>(data)) = video_mode;
           return ONI_STATUS_OK;
+
+        case ONI_STREAM_PROPERTY_CROPPING:            // OniCropping*
+          std::cout << "get cropping" << std::endl;
+          if (*pDataSize != sizeof(OniCropping)) {
+            printf("Unexptected size: %d != %lu\n", *pDataSize, sizeof(OniVideoMode));
+            return ONI_STATUS_ERROR;
+          }
+          *(static_cast<OniCropping*>(data)) = cropping;
+          return ONI_STATUS_OK;
+        
         case ONI_STREAM_PROPERTY_MIRRORING:           // OniBool
           if (*pDataSize != sizeof(OniBool))
           {
@@ -123,13 +135,11 @@ namespace FreenectDriver {
     virtual OniStatus setProperty(int propertyId, const void* data, int dataSize) {
       switch (propertyId) {
         default:
-        case ONI_STREAM_PROPERTY_CROPPING:            // OniCropping*
         case ONI_STREAM_PROPERTY_HORIZONTAL_FOV:      // float: radians
         case ONI_STREAM_PROPERTY_VERTICAL_FOV:        // float: radians
         case ONI_STREAM_PROPERTY_MAX_VALUE:           // int
         case ONI_STREAM_PROPERTY_MIN_VALUE:           // int
         case ONI_STREAM_PROPERTY_STRIDE:              // int
-        case ONI_STREAM_PROPERTY_MIRRORING:           // OniBool
         case ONI_STREAM_PROPERTY_NUMBER_OF_FRAMES:    // int
         // camera
         case ONI_STREAM_PROPERTY_AUTO_WHITE_BALANCE:  // OniBool
@@ -146,6 +156,26 @@ namespace FreenectDriver {
           }
           if (ONI_STATUS_OK != setVideoMode(*(static_cast<const OniVideoMode*>(data))))
             return ONI_STATUS_NOT_SUPPORTED;
+          raisePropertyChanged(propertyId, data, dataSize);
+          return ONI_STATUS_OK;
+          
+        case ONI_STREAM_PROPERTY_CROPPING:            // OniCropping*
+          std::cout << "set cropping" << std::endl;
+          if (dataSize != sizeof(OniCropping)) {
+            printf("Unexpected size: %d != %lu\n", dataSize, sizeof(OniCropping));
+            return ONI_STATUS_ERROR;
+          }
+          cropping = *(static_cast<const OniCropping*>(data));
+          
+          raisePropertyChanged(propertyId, data, dataSize);
+          return ONI_STATUS_OK;
+          
+        case ONI_STREAM_PROPERTY_MIRRORING:           // OniBool
+          if (dataSize != sizeof(OniBool)) {
+            printf("Unexpected size: %d != %lu\n", dataSize, sizeof(OniBool));
+            return ONI_STATUS_ERROR;
+          }
+          mirroring = *(static_cast<const OniBool*>(data));
           raisePropertyChanged(propertyId, data, dataSize);
           return ONI_STATUS_OK;
       }
