@@ -1,11 +1,11 @@
 OpenNI2-FreenectDriver
 ======================
 
-FreenectDriver is a bridge to libfreenect implemented as an OpenNI2 driver. It allows use of Kinect hardware as supported by libfreenect. FreenectDriver is available under the Apache 2 license; copyright information appears in src/DeviceDriver.cpp and LICENSE.
+FreenectDriver is a bridge to libfreenect implemented as an OpenNI2 driver. It allows use of Kinect hardware on Linux and OSX as supported by libfreenect. FreenectDriver is available under the Apache 2 license; copyright information appears in src/DeviceDriver.cpp and LICENSE.
 
 Dependencies
 ------------
-* g++ (Linux) or clang++ (OSX)
+* g++ >= 4.6.3 or clang++
 * python
 * libfreenect
 
@@ -36,9 +36,7 @@ __________________________________________________
 
 Todo
 ----
-* switch to my own advanced libfreenect C++ header
 * Gentoo ebuilds
-* PROPER LOGGING!
 * support more FREENECT_RESOLUTION_\*, FREENECT_VIDEO_\*, and FREENECT_DEPTH_\*
 * provide more OniVideoMode and OniStreamProperty
 * implement remaining derived functions

@@ -15,8 +15,7 @@ def options(opt):
 	opt.load('compiler_cxx')
 	
 def configure(conf):
-	#conf.env.CXXFLAGS += ['-O2', '-fPIC', '-std=c++0x']
-	conf.env.CXXFLAGS = ['-w', '-O2']
+	conf.env.CXXFLAGS = ['-std=c++0x', '-O2']
 	conf.load('compiler_cxx')
 	conf.check_cxx(lib='freenect', uselib_store='freenect')
 	

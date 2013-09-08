@@ -87,7 +87,7 @@ namespace FreenectDriver {
 
     // only add to property handlers if the property is generic to all children
     // otherwise, implement in child and call these in default case
-    OniBool isPropertySupported(int propertyId) { return (getProperty(propertyId, NULL, NULL) != ONI_STATUS_NOT_SUPPORTED); }
+    OniBool isPropertySupported(int propertyId) { return (getProperty(propertyId, nullptr, nullptr) != ONI_STATUS_NOT_SUPPORTED); }
     virtual OniStatus getProperty(int propertyId, void* data, int* pDataSize) {
       switch (propertyId) {
         default:
