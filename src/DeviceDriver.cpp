@@ -20,31 +20,39 @@
 #include "libfreenect.hpp"
 #include "DepthStream.hpp"
 #include "ColorStream.hpp"
+#include "InfraRedStream.hpp"
 
+#include <iostream>
 
 static bool operator<(const OniDeviceInfo& left, const OniDeviceInfo& right) { return (strcmp(left.uri, right.uri) < 0); } // for std::map
 
 namespace FreenectDriver {
   class Device : public oni::driver::DeviceBase, public Freenect::FreenectDevice {
   private:
-    ColorStream* color;
-    DepthStream* depth;
-    
+    ColorStream*    color;
+    DepthStream*    depth;
+    InfraRedStream* ir;
+
     // for Freenect::FreenectDevice
     void DepthCallback(void* data, uint32_t timestamp) {
       depth->buildFrame(data, timestamp);
     }
     void VideoCallback(void* data, uint32_t timestamp) {
-      color->buildFrame(data, timestamp);
+        if(color)
+            color->buildFrame(data, timestamp);
+        else if(ir)
+            ir->buildFrame(data, timestamp);
     }
-  
+
   public:
     Device(freenect_context* fn_ctx, int index) : Freenect::FreenectDevice(fn_ctx, index),
       color(nullptr),
-      depth(nullptr) { }
+      depth(nullptr),
+	  ir(nullptr) { }
     ~Device() {
       destroyStream(color);
       destroyStream(depth);
+      destroyStream(ir);
     }
 
     // for DeviceBase
@@ -52,10 +60,11 @@ namespace FreenectDriver {
     OniBool isImageRegistrationModeSupported(OniImageRegistrationMode mode) { return depth->isImageRegistrationModeSupported(mode); }
     
     OniStatus getSensorInfoList(OniSensorInfo** pSensors, int* numSensors) {
-      *numSensors = 2;
+      *numSensors = 3;
       OniSensorInfo * sensors = new OniSensorInfo[*numSensors];
       sensors[0] = depth->getSensorInfo();
       sensors[1] = color->getSensorInfo();
+      sensors[2] = ir->getSensorInfo();
       *pSensors = sensors;
       return ONI_STATUS_OK;
     }
@@ -66,16 +75,24 @@ namespace FreenectDriver {
           //m_driverServices.errorLoggerAppend("FreenectDeviceNI: Can't create a stream of type %d", sensorType);
           return nullptr;
         case ONI_SENSOR_COLOR:
-          Freenect::FreenectDevice::startVideo();
           if (! color)
-            color = new ColorStream(this);
+          {
+              Freenect::FreenectDevice::startVideo();
+              color = new ColorStream(this);
+           }
           return color;
         case ONI_SENSOR_DEPTH:
-          Freenect::FreenectDevice::startDepth();
           if (! depth)
+          {
+            Freenect::FreenectDevice::startDepth();
             depth = new DepthStream(this);
+          }
           return depth;
-        // todo: IR
+        case ONI_SENSOR_IR:
+            Freenect::FreenectDevice::startVideo();
+            if (! ir)
+                ir = new InfraRedStream(this);
+            return ir;
       }
     }
     
@@ -92,6 +109,11 @@ namespace FreenectDriver {
         Freenect::FreenectDevice::stopDepth();
         delete depth;
         depth = nullptr;
+      }
+      if (pStream == ir) {
+        Freenect::FreenectDevice::stopVideo();
+        delete ir;
+        ir = NULL;
       }
     }
     
@@ -175,6 +197,33 @@ namespace FreenectDriver {
     /* todo: for DeviceBase
     virtual OniStatus tryManualTrigger() {return ONI_STATUS_OK;}
     */
+
+    virtual OniStatus tryManualTrigger()
+    {
+        //std::cout << "tryManualTrigger" << std::endl;
+        return ONI_STATUS_OK;
+    }
+    virtual void setPropertyChangedCallback(oni::driver::PropertyChangedCallback handler, void* pCookie)
+    {
+        std::cout << "setPropertyChangedCallback" << std::endl;
+        return oni::driver::DeviceBase::setPropertyChangedCallback(handler,pCookie);
+    }
+
+    virtual void notifyAllProperties()
+    {
+        std::cout << "notifyAllProperties" << std::endl;
+        oni::driver::DeviceBase::notifyAllProperties();
+    }
+
+    void* enableFrameSync(oni::driver::StreamBase** pStreams, int streamCount)
+    {
+        return NULL;
+    }
+
+    void disableFrameSync(void* frameSyncGroup)
+    {
+
+    }
   };
   
   

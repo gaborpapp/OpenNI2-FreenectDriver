@@ -55,9 +55,29 @@ void ColorStream::populateFrame(void* data, OniFrame* frame) const {
       return;
  
     case ONI_PIXEL_FORMAT_RGB888:
-      unsigned char* data_ptr = static_cast<unsigned char*>(data);
-      unsigned char* frame_data = static_cast<unsigned char*>(frame->data);
-      if (mirroring) {
+      unsigned char* source = static_cast<unsigned char*>(data);
+      unsigned char* target = static_cast<unsigned char*>(frame->data);
+      if (mirroring)
+      {
+          // go to the end of this line
+          target = target + ((video_mode.resolutionX -1) * 3);
+
+          for (unsigned int y = 0; y < video_mode.resolutionY; y++)
+          {
+              for (unsigned int x = 0; x < video_mode.resolutionX; x++)
+              {
+                  *target       = *source;
+                  *(target + 1) = *(source+1);
+                  *(target + 2) = *(source+2);
+
+                  source += 3;
+                  target -= 3;
+              }
+
+              target += 2 * video_mode.resolutionX * 3;
+          }
+
+       /*
         for (unsigned int i = 0; i < frame->dataSize; i += 3) {
           // find corresponding mirrored pixel
           unsigned int pixel = i / 3;
@@ -69,9 +89,11 @@ void ColorStream::populateFrame(void* data, OniFrame* frame) const {
           frame_data[i+1] = data_ptr[target+1];
           frame_data[i+2] = data_ptr[target+2];
         }
+        */
       }
       else
-        std::copy(data_ptr, data_ptr+frame->dataSize, frame_data);
+          memcpy(target,source,frame->dataSize);
+        //std::copy(data_ptr, data_ptr+frame->dataSize, frame_data);
 
       return;
   }

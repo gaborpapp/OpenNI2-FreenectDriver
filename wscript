@@ -20,6 +20,7 @@ def configure(conf):
 	conf.check_cxx(lib='freenect', uselib_store='freenect')
 	
 	if platform.system() == 'Darwin':
+		conf.env.ARCH = ['i386', 'x86_64']
 		conf.env.CXX = ['clang++'] # can remove if OSX has >= gcc-4.6
 
 def build(bld):

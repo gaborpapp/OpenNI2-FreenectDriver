@@ -4,7 +4,7 @@ import os
 
 OPENNI2_INCLUDE = os.environ['OPENNI2_INCLUDE']
 
-SOURCES = ['ColorStream.cpp', 'DepthStream.cpp', 'DeviceDriver.cpp']
+SOURCES = ['ColorStream.cpp', 'DepthStream.cpp', 'InfraRedStream.cpp', 'DeviceDriver.cpp']
 SOURCES = ['src/' + s for s in SOURCES]
 INCLUDES = [OPENNI2_INCLUDE, 'src', '/usr/local/include',
 		'/usr/local/include/libfreenect', '/opt/local/include']

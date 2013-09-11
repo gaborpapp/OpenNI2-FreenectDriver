@@ -1,7 +1,7 @@
 #pragma once
 
 #include <algorithm> // for transform()
-#include <cmath> // for M_PI
+#include <math.h> // for M_PI
 #include "libfreenect.hpp"
 #include "Driver/OniDriverAPI.h"
 #include "VideoStream.hpp"

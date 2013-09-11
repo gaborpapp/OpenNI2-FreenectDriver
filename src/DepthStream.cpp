@@ -5,7 +5,8 @@ using namespace FreenectDriver;
 
 DepthStream::DepthStream(Freenect::FreenectDevice* pDevice) : VideoStream(pDevice) {
 	video_mode = makeOniVideoMode(ONI_PIXEL_FORMAT_DEPTH_1_MM, 640, 480, 30);
-	image_registration_mode = ONI_IMAGE_REGISTRATION_OFF;
+    //image_registration_mode = ONI_IMAGE_REGISTRATION_DEPTH_TO_COLOR;
+    image_registration_mode = ONI_IMAGE_REGISTRATION_OFF;
 	setVideoMode(video_mode);
 }
 
@@ -46,71 +47,71 @@ OniStatus DepthStream::setVideoMode(OniVideoMode requested_mode) {
 	return ONI_STATUS_OK;
 }
 
-void DepthStream::populateFrame(void* data, OniFrame* frame) const {	
-	frame->sensorType = sensor_type;
-	frame->stride = video_mode.resolutionX * sizeof(uint16_t);
-	
-	if (cropping.enabled) {
-		frame->height = cropping.height;
-		frame->width = cropping.width;
-		frame->cropOriginX = cropping.originX;
-		frame->cropOriginY = cropping.originY;
-		frame->croppingEnabled = true;
-	}
-	else {
-		frame->cropOriginX = frame->cropOriginY = 0;
-		frame->croppingEnabled = false;	
-	}
-	
-	
-	// copy stream buffer from freenect
-	
-	unsigned short* source = static_cast<unsigned short*>(data) + frame->cropOriginX + frame->cropOriginY * video_mode.resolutionX;
-	unsigned short* target = static_cast<unsigned short*>(frame->data);
-	const unsigned int skipWidth = video_mode.resolutionX - frame->width;
-	
-	if (mirroring) {
-		target += frame->width;
-		
-		for (unsigned int y = 0; y < frame->height; y++) {
-			for (unsigned int x = 0; x < frame->width; x++) {
-				unsigned short value = *(source++);
-				*(target--) = value < DepthStream::MAX_VALUE ? value : 0;
-			}
-			
-			source += skipWidth;
-			target += 2 * frame->width;
-		}
-	}
-	else {
-		for (unsigned int y = 0; y < frame->height; y++) {
-			for (unsigned int x = 0; x < frame->width; x++) {
-				unsigned short value = *(source++);
-				*(target++) = value < DepthStream::MAX_VALUE ? value : 0;
-			}
-			
-			source += skipWidth;
-		}
-	}
-	
-	/*
-	uint16_t* data_ptr = static_cast<uint16_t*>(data);
-	uint16_t* frame_data = static_cast<uint16_t*>(frame->data);
-	if (mirroring)
-	{
-		for (unsigned int i = 0; i < frame->dataSize / 2; i++)
-		{
-			// find corresponding mirrored pixel
-			unsigned int row = i / video_mode.resolutionX;
-			unsigned int col = video_mode.resolutionX - (i % video_mode.resolutionX);
-			unsigned int target = (row * video_mode.resolutionX) + col;
-			// copy it to this pixel
-			frame_data[i] = data_ptr[target];
-		}
-	}
-	else
-		std::copy(data_ptr, data_ptr+frame->dataSize / 2, frame_data);
-	*/
+// Discard the depth value equal or greater than the max value.
+inline unsigned short filterReliableDepthValue(unsigned short value)
+{
+    return value < DepthStream::MAX_VALUE ? value : 0;
+}
+
+void DepthStream::populateFrame(void* data, OniFrame* frame) const
+{
+    if (!_cropping.enabled)
+    {   // no croping
+        frame->cropOriginX = frame->cropOriginY = 0;
+        frame->croppingEnabled = FALSE;
+    }
+    else
+    {   // croping
+        frame->height = _cropping.height;
+        frame->width  = _cropping.width;
+        frame->cropOriginX = _cropping.originX;
+        frame->cropOriginY = _cropping.originY;
+        frame->croppingEnabled = TRUE;
+    }
+
+    frame->sensorType = sensor_type;
+	frame->stride = video_mode.resolutionX*sizeof(uint16_t);
+
+    int numPoints = video_mode.resolutionY * video_mode.resolutionX;
+
+    // populate the pixel data
+    copyDepthPixelsStraight((unsigned short*)data, numPoints, frame);
+}
+
+void DepthStream::copyDepthPixelsStraight(unsigned short* source, int numPoints, OniFrame* pFrame) const
+{
+    unsigned short* target = (unsigned short*) pFrame->data;
+
+    const unsigned int width = pFrame->width;
+    const unsigned int height = pFrame->height;
+    const unsigned int skipWidth = video_mode.resolutionX - width;
+
+    // Offset the starting position
+    source += pFrame->cropOriginX + pFrame->cropOriginY * video_mode.resolutionX;
+
+    if(mirroring)
+    {
+        target = target + width -1;
+
+        for (unsigned int y = 0; y < height; y++)
+        {
+            for (unsigned int x = 0; x < width; x++)
+                *(target--) = filterReliableDepthValue(*(source++));
+
+            source += skipWidth;
+            target += 2 * width;
+        }
+    }
+    else
+    {
+        for (unsigned int y = 0; y < height; y++)
+        {
+            for (unsigned int x = 0; x < width; x++)
+                *(target++) = filterReliableDepthValue(*(source++));
+
+            source += skipWidth;
+        }
+    }
 }
 
 
